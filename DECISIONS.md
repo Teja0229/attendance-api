@@ -1,0 +1,7 @@
+# DECISIONS.md
+
+1. **Indexes.** I made `emp_code` unique on employees and (`emp_code`, `date`) unique on logs, so duplicates are blocked by the database itself. For the attendance list I added (`date` desc, `emp_code`) and (`status`, `date` desc, `emp_code`), which match its sort order. The leaderboard uses (`date`, `late_minutes`, `emp_code`), so it can be answered from the index alone. On employees, (`department`, `joined_on`) serves headcount in the summary and trend. I rejected an index on `status` alone: it has only five values, so it filters almost nothing.
+2. **Punch-in race.** Both requests find the employee and call `insert_one`. The unique index lets one insert succeed (201); the other raises `DuplicateKeyError` and I return 409. I never check first and insert later.
+3. **Ties.** `$rank` gives 1, 2, 2, 4. I apply `limit` after ranking, so everyone tied at the cutoff is returned, even if that is more than `limit` rows. Ties are ordered by `emp_code`.
+4. **Headcount.** The summary starts from `employees` who joined by month end and looks up each person's logs. Someone with no logs still gets a row, so they are counted.
+5. **100x data.** I would store daily totals per department in a separate collection, because the summary and trend now read every log of the month.
